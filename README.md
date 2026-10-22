@@ -11,6 +11,7 @@ NivelOmega 니벨오메가는 젬블로컴퍼니의 TCG게임 '니벨아레나 N
 ![덱 관리](images/nivelomega-3.png)
 
 금지/제한 목록도 확인 가능합니다.
+
 ![금지제한 확인](images/nivelomega-9.png)
 ---
 ## AI 대전
@@ -23,6 +24,7 @@ NivelOmega 니벨오메가는 젬블로컴퍼니의 TCG게임 '니벨아레나 N
 방의 금지/제한을 설정하여 대전할 수 있습니다. (무제한도 지원합니다.)
 
 로비 채팅/방 채팅도 지원합니다.
+
 ![덱 관리](images/nivelomega-8.png)
 ![덱 관리](images/nivelomega-10.png)
 ---

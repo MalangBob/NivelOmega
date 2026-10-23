@@ -89,7 +89,13 @@ export class GitHubReleaseApi {
   }
   async draft(repo, tag, fingerprint, allowPublished = false) {
     const release = await this.findRelease(repo, tag);
-    if (!release) throw new Error(`${repo}: release ${tag} was not found.`);
+    if (!release) {
+      const user = await this.request('/user').catch(() => null);
+      const repository = await this.request(`/repos/${repo}`).catch(() => null);
+      const push = repository?.permissions?.push;
+      throw new Error(`${repo}: release ${tag} is not visible to token user ${user?.login ?? 'unknown'} ` +
+        `(repository push permission: ${typeof push === 'boolean' ? push : 'unknown'}).`);
+    }
     return validateRelease(repo, release, tag, fingerprint, allowPublished);
   }
   async downloadAsset(repo, asset, destination) {

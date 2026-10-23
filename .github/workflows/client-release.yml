@@ -1,0 +1,64 @@
+name: Verify and publish client release
+
+on:
+  repository_dispatch:
+    types: [nivelomega-release-ready]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nivelomega-client-release
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  windows-install:
+    if: github.repository == 'MalangBob/NivelOmega'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      RELEASE_TAG: ${{ github.event.client_payload.tag }}
+      CLIENT_FINGERPRINT: ${{ github.event.client_payload.clientFingerprint }}
+      DATA_FINGERPRINT: ${{ github.event.client_payload.dataFingerprint }}
+      REQUIRE_RUNTIME: ${{ github.event.client_payload.requireSideBySideRuntime }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Download the draft installer and verify its build checksum
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+        run: |
+          node Tools/Release/public-release.mjs verify-installer $env:RELEASE_TAG $env:CLIENT_FINGERPRINT $env:DATA_FINGERPRINT release/NivelOmega-win-Setup.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Draft installer verification failed.' }
+      - name: Verify fresh installation and reinstallation
+        shell: pwsh
+        run: |
+          . ./Tools/Release/verify-windows-install.ps1
+          if ($env:REQUIRE_RUNTIME -notin @('true', 'false')) { throw 'Invalid runtime check mode.' }
+          Test-NivelWindowsSetup -SetupExe release/NivelOmega-win-Setup.exe -Version ($env:RELEASE_TAG -replace '^v', '') -PackageId NivelOmega -OutputDirectory Builds/InstallChecks -RequireSideBySideRuntime:($env:REQUIRE_RUNTIME -eq 'true')
+
+  publish:
+    needs: windows-install
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ github.event.client_payload.tag }}
+      CLIENT_FINGERPRINT: ${{ github.event.client_payload.clientFingerprint }}
+      DATA_FINGERPRINT: ${{ github.event.client_payload.dataFingerprint }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Publish the verified client and data drafts
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+        run: node Tools/Release/public-release.mjs publish "$RELEASE_TAG" "$CLIENT_FINGERPRINT" "$DATA_FINGERPRINT"
